@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Value Bets: football & hockey</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root{--bg:#0f1419;--card:#18202a;--mut:#8b98a5;--txt:#e6edf3;--acc:#3fb950;--neg:#f85149;--warn:#d29922;--line:#2a3441}
+*{box-sizing:border-box}body{margin:0;font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt)}
+header{padding:16px 24px;border-bottom:1px solid var(--line);display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+h1{font-size:18px;margin:0}nav button{background:none;border:1px solid var(--line);color:var(--txt);padding:6px 12px;border-radius:6px;cursor:pointer;margin-right:6px}
+nav button.on{background:#238636;border-color:#238636}main{padding:16px 24px;max-width:1400px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}.kpi .v{font-size:22px;font-weight:600}.kpi .l{color:var(--mut);font-size:12px}
+table{border-collapse:collapse;width:100%;font-size:13px}th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+th{color:var(--mut);font-weight:500;position:sticky;top:0;background:var(--card)}tr.pick{background:rgba(63,185,80,.12)}
+.pos{color:var(--acc)}.neg{color:var(--neg)}.mut{color:var(--mut)}.tag{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;border:1px solid var(--line)}
+.tag.bt{border-color:var(--warn);color:var(--warn)}.tag.live{border-color:var(--acc);color:var(--acc)}
+.warn{border-left:3px solid var(--warn);padding:8px 12px;background:rgba(210,153,34,.08);margin-bottom:14px}
+select{background:var(--card);color:var(--txt);border:1px solid var(--line);padding:4px 8px;border-radius:6px}
+.scroll{overflow-x:auto;max-height:70vh}.wide{overflow-x:auto}
+#upT td,#upT th{white-space:normal;padding:6px 6px}#upT td.nw{white-space:nowrap}#upT .det td{background:#121a22;font-size:12px;color:var(--mut)}
+#upT .det b{color:var(--txt);font-weight:500}.xb{background:none;border:1px solid var(--line);color:var(--mut);border-radius:4px;cursor:pointer;width:22px;padding:0}
+.seg button{background:none;border:1px solid var(--line);color:var(--txt);padding:4px 10px;cursor:pointer}.seg button:first-child{border-radius:6px 0 0 6px}.seg button:last-child{border-radius:0 6px 6px 0;border-left:none}.seg button.on{background:#238636;border-color:#238636}.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}@media(max-width:900px){.two{grid-template-columns:1fr}}
+canvas{max-height:340px}small{color:var(--mut)}
+table.mk{width:auto;margin:2px 0 6px;font-size:12px}table.mk td,table.mk th{padding:2px 8px;vertical-align:top}
+</style>
+</head>
+<body>
+<header><h1>Value Bets: Football & Ice Hockey</h1>
+<nav><button data-t="up" class="on">Upcoming picks</button><button data-t="perf">Performance &amp; bet history</button><button data-t="live">Live picks</button><button data-t="bt">Backtest</button><button data-t="about">Method & sources</button></nav>
+<span class="mut" id="stamp"></span></header>
+<main>
+<section id="up">
+ <div class="card" id="homeStrip"></div>
+ <div class="warn"><b>Status (v4, Oct 2026):</b> The model-based rules did <b>not</b> pass a strict rolling walk-forward test and are no longer bets (shown as unstaked "model lean"). <b>Adopted</b>: price-based football rules that beat the market-average no-vig price: <b>F11</b> best named soft book ≥8% above it (odds ≤4), <b>F2</b> max price across books ≥10% above it. Out-of-sample 2014-27: 678 bets, ROI +16.3% (95% CI +1.5% to +32.4%), CLV +10.5% (CI +9.4% to +11.7%), CLV positive in 13/13 seasons. <b>But</b> most of that edge came from soft books that no longer quote (Interwetten) and from 2014-22; 2022-27 has only about 50 bets. Expect very few picks, low limits and the risk of restricted accounts. Picks only appear for fixtures in the football-data.co.uk odds file (updated Tue/Fri). Details in the Backtest tab.</div>
+ <div class="card"><label>Sport <select id="fSport"><option value="">all</option><option>football</option><option>hockey</option></select></label>
+  <label>League <select id="fLeague"><option value="">all</option></select></label>
+  <span class="seg" id="fShow"><button data-v="all" class="on">All games</button><button data-v="picks">Picks only</button></span>
+  <button class="xb" id="fExp" title="expand/collapse all details" style="width:auto;padding:3px 8px">details ▾</button> <small id="upInfo"></small></div>
+ <div class="card wide"><table id="upT"></table></div>
+ <div class="card"><small>Times shown in Europe/Zurich. <b>+</b> opens details (fair odds, value-at, Elo, form, H2H, injuries). <b>Pick</b> = model EV above threshold at the listed price. <b>Value at ≥</b> = minimum odds at which a selection would clear the EV threshold on the pure model (use it when we have no odds feed, e.g. Swiss leagues). Elo = strength rating; form = average result vs Elo expectation over the last 6 games (opponent-strength-adjusted streak); H2H = same, over recent head-to-head meetings.</small></div>
+</section>
+<section id="perf" hidden>
+ <div class="card"><span class="seg" id="pMode"><button data-v="live">Live (real recorded picks)</button><button data-v="bt" class="on">Backtest: adopted v4 rules (F11 + F2)</button><button data-v="old">Old model rules (not adopted)</button><button data-v="fs">Flashscore-odds test (separate)</button></span>
+  <small id="pNote" style="margin-left:10px"></small></div>
+ <div class="card"><label>Sport <select id="pSport"><option value="">all</option><option value="football">football</option><option value="hockey">hockey</option></select></label>
+  <label>League <select id="pLeague"><option value="">all</option></select></label>
+  <label>Market <select id="pMarket"><option value="">all</option></select></label>
+  <label>Odds <select id="pBand"><option value="">all</option><option>fav &lt;2.0</option><option>2.0-3.0</option><option>3.0+</option></select></label>
+  <label>Season <select id="pSeason"><option value="">all</option></select></label>
+  <label>Result <select id="pRes"><option value="">all</option><option value="won">won</option><option value="lost">lost</option><option value="push">push / half</option><option value="open">open</option></select></label>
+  <label>Search <input id="pQ" placeholder="team…" style="background:var(--card);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:4px 8px;width:130px"></label></div>
+ <div id="pEmpty"></div>
+ <div class="grid card" id="pK"></div>
+ <div class="two"><div class="card"><canvas id="pC"></canvas></div><div class="card"><canvas id="pB"></canvas></div></div>
+ <div class="card" id="pBy"></div>
+ <div class="card"><h3 style="margin-top:0">Bet history <small id="pCount"></small></h3><div class="wide"><table id="pT"></table></div><div id="pPg" style="margin-top:8px"></div></div>
+</section>
+<section id="live" hidden>
+ <div class="card"><span class="tag live">LIVE</span> Picks recorded before kick-off and settled after the match. Flat 1 unit per pick; Kelly = ¼-Kelly capped at 2% (1 unit = 1% bankroll).</div>
+ <div class="grid card" id="liveK"></div>
+ <div class="two"><div class="card"><canvas id="liveC"></canvas></div><div class="card"><canvas id="liveL"></canvas></div></div>
+ <div class="card scroll"><table id="liveT"></table></div>
+</section>
+<section id="bt" hidden>
+ <div class="warn"><span class="tag bt">BACKTEST</span> Simulated on historic odds, not real bets. The betting rule was tuned on the <b>calibration</b> window and then frozen; the <b>test</b> window is out-of-sample. Only the test numbers mean anything.</div>
+ <div class="card" id="edgeT"></div>
+ <div class="card" id="v2acc"></div>
+ <div class="grid card" id="v2K"></div>
+ <div class="two"><div class="card"><canvas id="v2C"></canvas></div><div class="card"><canvas id="v2F"></canvas></div></div>
+ <div class="card" id="v2seg"></div>
+ <div class="card" id="gkT"></div>
+ <div class="card" id="fsT"></div>
+ <div class="card" id="mkT"></div>
+ <div class="two"><div class="card"><canvas id="mkC"></canvas></div><div class="card"><canvas id="mkN"></canvas></div></div>
+ <h2 style="margin:22px 0 8px">v1 backtest (Elo-only model, kept for comparison)</h2>
+ <div class="card"><label>Sport <select id="btSport"><option value="football">Football (12 leagues)</option><option value="nhl">NHL</option></select></label> <small id="btInfo"></small></div>
+ <div class="grid card" id="btK"></div>
+ <div class="card"><canvas id="btC"></canvas></div>
+ <div class="two"><div class="card"><canvas id="btL"></canvas></div><div class="card"><canvas id="btS"></canvas></div></div>
+ <div class="card"><h3 style="margin-top:0">Model vs market (test window, log-loss; lower is better)</h3><div id="btQ"></div></div>
+ <div class="card scroll"><h3 style="margin-top:0">By league / season (test window)</h3><table id="btT"></table></div>
+ <div class="card"><h3 style="margin-top:0">Swiss National League</h3><div id="btNL"></div></div>
+</section>
+<section id="about" hidden><div class="card" id="aboutC"></div></section>
+</main>
+<script>
+const TZ='Europe/Zurich', fmt=new Intl.DateTimeFormat('de-CH',{timeZone:TZ,weekday:'short',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+const LN={E0:'Premier League',E1:'Championship',SP1:'La Liga',SP2:'Segunda',I1:'Serie A',I2:'Serie B',D1:'Bundesliga',D2:'2. Bundesliga',F1:'Ligue 1',F2:'Ligue 2',SUI1:'Super League',SUI2:'Challenge League',NHL:'NHL',NL:'National League'};
+const SN={H:'Home',D:'Draw',A:'Away'};
+const SEAS=x=>{x=String(x);if(/^\d{8}$/.test(x))return x.slice(0,4)+'-'+x.slice(6);if(/^\d{4}$/.test(x))return '20'+x.slice(0,2)+'-'+x.slice(2);return x};
+const pct=x=>x==null?'–':(x*100).toFixed(1)+'%', f2=x=>x==null?'–':(+x).toFixed(2), cls=x=>x>0?'pos':x<0?'neg':'';
+const J=u=>fetch(u+'?t='+Date.now()).then(r=>r.ok?r.json():null).catch(()=>null);
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b));
+ document.querySelectorAll('main>section').forEach(s=>s.hidden=s.id!==b.dataset.t)});
+const charts={};window.addEventListener('load',()=>{const h=location.hash.slice(1);const b=document.querySelector(`nav button[data-t="${h}"]`);b&&b.click()});function chart(id,cfg){charts[id]&&charts[id].destroy();charts[id]=new Chart(document.getElementById(id),cfg)}
+Chart.defaults.color='#8b98a5';Chart.defaults.borderColor='#2a3441';
+function kpis(el,s){const it=[['Bets',s.bets],['Profit (units)',f2(s.profit_units)],['ROI',pct(s.roi)+(s.roi_se?` ±${pct(s.roi_se)}`:'')],['Hit rate',pct(s.hit_rate)],['Avg odds',f2(s.avg_odds)],['¼-Kelly profit',f2(s.kelly_profit)],['Avg CLV',pct(s.avg_clv)],['Beat close',pct(s.pct_beat_close)]];
+ el.innerHTML=it.map(([l,v])=>`<div class="kpi"><div class="l">${l}</div><div class="v ${/Profit|ROI|CLV/.test(l)?cls(parseFloat(v)):''}">${v??'–'}</div></div>`).join('')}
+function curve(bets){let c=0,k=0;return bets.map(b=>({x:b.kickoff_utc.slice(0,10),y:(c+=b.pnl_units??b.pnl),k:(k+=b.pnl_kelly)}))}
+
+// ---------------- upcoming
+const MK=m=>m==='1X2'?'1X2':m==='ML'?'Moneyline':m.startsWith('AH')?'Asian hcp':m.startsWith('OU')?'Over/Under':m.startsWith('PL')?'Puck line':m;
+function mktTable(g){if(!g.markets)return '';
+ const r=g.markets.map(m=>{const S=Object.keys(m.label),off=m.policy&&m.policy.enabled===false,pk=g.pick&&g.pick.market===m.market;
+  return `<tr class="${pk?'pick':''}"><td class=nw>${MK(m.market)}${off?' <small class=mut title="no edge in tuning seasons: prices only, no picks">(prices only)</small>':''}</td>
+  <td>${S.map(s=>`<span class=nw>${m.label[s]}</span>`).join('<br>')}</td>
+  <td class=nw>${S.map(s=>m.model&&m.model[s]!=null?pct(m.model[s]):'–').join('<br>')}</td>
+  <td class=nw>${S.map(s=>f2(m.fair_odds[s])).join('<br>')}</td><td class=nw>${S.map(s=>f2(m.min_odds_for_value[s])).join('<br>')}</td>
+  <td class=nw>${m.odds?S.map(s=>f2(m.odds[s])).join('<br>')+`<br><small>${m.book}</small>`:'<small>no feed</small>'}</td>
+  <td class=nw>${m.ev?S.map(s=>`<span class="${cls(m.ev[s])}">${pct(m.ev[s])}</span>`).join('<br>'):'–'}</td></tr>`}).join('');
+ return `<table class="mk"><tr><th>Market</th><th>Selection</th><th>Model %</th><th>Fair odds</th><th>Value at ≥</th><th>Odds</th><th>EV (blended)</th></tr>${r}</table>`}
+let UP=null;
+let SHOW='all',OPEN=new Set(),ALLOPEN=false;
+function renderUp(){const sp=fSport.value,lg=fLeague.value,po=SHOW==='picks';
+ const inj={};(UP.injuries||[]).forEach(i=>{(inj[i.team]=inj[i.team]||[]).push(i)});
+ const rows=UP.games.filter(g=>(!sp||g.sport===sp)&&(!lg||g.league===lg)&&(!po||g.pick));
+ upInfo.textContent=`${rows.length} games shown · ${UP.games.filter(g=>g.pick).length} picks in next ${UP.horizon_days} days`;
+ const M0=g=>(g.markets&&g.markets[0])||g; const sels=g=>M0(g).market==='1X2'?['H','D','A']:['H','A'];
+ const out=(t)=>(inj[t]||[]).filter(i=>/Out|Reserve|Injured/i.test(i.status));
+ upT.innerHTML='<tr><th></th><th>Kick-off</th><th>League</th><th>Match</th><th>Model % (1X2/ML)</th><th>Odds</th><th>EV</th><th>Market</th><th>Pick · stake</th></tr>'+
+ (rows.length?'':'<tr><td colspan=9 class=mut>No games match the filter.</td></tr>')+
+ rows.map(g=>{const S=sels(g),p=g.pick,o=ALLOPEN||OPEN.has(g.match_id);const iH=out(g.home),iA=out(g.away);
+  const main=`<tr class="${p?'pick':''}"><td><button class="xb" data-id="${g.match_id}">${o?'−':'+'}</button></td><td class=nw>${fmt.format(new Date(g.kickoff_utc))}</td><td>${LN[g.league]||g.league}</td><td><b>${g.home}</b> – ${g.away}</td>
+  <td class=nw>${S.map(s=>pct(M0(g).model[s])).join(' / ')}</td>
+  <td class=nw>${M0(g).odds?S.map(s=>f2(M0(g).odds[s])).join(' / ')+`<br><small>${M0(g).book}</small>`:'<small>no feed</small>'}</td>
+  <td class=nw>${M0(g).ev?S.map(s=>`<span class="${cls(M0(g).ev[s])}">${pct(M0(g).ev[s])}</span>`).join(' / '):'–'}</td>
+  <td class=nw>${p?MK(p.market):`<small class=mut>${(g.markets||[]).filter(m=>m.odds).length} priced</small>`}</td>
+  <td>${p?`<b class="pos">${p.label||SN[p.selection]} @ ${f2(p.price)}</b><br><small>${p.strategy?p.strategy+' · '+p.book+' · edge '+pct(p.ev)+' · ':''}1u flat · ${f2(p.kelly_units)}u ¼-Kelly</small>${p.warning?`<br><small class="neg">⚠ ${p.warning}</small>`:''}`:'<span class="mut">no bet</span>'+(g.lean?`<br><small class=mut title="old model rule: did not pass the v4 walk-forward test, not a bet">model lean (unproven): ${g.lean.label} @ ${f2(g.lean.price)}</small>`:'')}</td></tr>`;
+  const det=o?`<tr class="det"><td></td><td colspan=8>${mktTable(g)}<b>Elo</b> ${g.elo_home} / ${g.elo_away} &nbsp; <b>Form</b> ${f2(g.form_home)} / ${f2(g.form_away)} &nbsp; <b>H2H</b> ${g.h2h_n?f2(g.h2h)+` (${g.h2h_n} games)`:'–'}
+${g.extra&&g.extra.xg_home!=null?` &nbsp; <b>Exp. goals</b> ${g.extra.xg_home} – ${g.extra.xg_away}`:''}
+   ${g.extra&&g.extra.goalies?`<br><b>Starting goalies</b> ${['h','a'].map(k=>{const x=g.extra.goalies[k];const st=x.status||'';const c=st.startsWith('confirmed')?'pos':st.startsWith('likely')?'':'neg';
+     return `${k==='h'?g.home:g.away}: <b>${x.name||'?'}</b> <span class="${c}">(${st})</span> GSAx ${x.gsax_per_game>0?'+':''}${f2(x.gsax_per_game)}/game${x.usual?'':`, ${x.vs_usual>0?'+':''}${f2(x.vs_usual)} vs usual starter`}`}).join(' · ')} &nbsp; <small>P(home) without goalie adj. ${pct(g.extra.p_home_without_goalies)}</small>`:''}
+   ${g.extra&&g.extra.three_way?` &nbsp; <b>60-min 1X2</b> ${['H','D','A'].map(s=>pct(g.extra.three_way[s])).join(' / ')}`:''}
+   ${g.edge_check?`<br><b>v4 price check</b> market-average no-vig odds ${['H','D','A'].map(k=>f2(g.edge_check.avg_fair_odds[k])).join(' / ')} · best named book ${['H','D','A'].map(k=>f2(g.edge_check.best_named[k])).join(' / ')}${g.edge_check.max_odds?' · max '+['H','D','A'].map(k=>f2(g.edge_check.max_odds[k])).join(' / '):''}`:''}
+   <br><b>Injuries</b> ${g.league==='NHL'?`${g.home}: ${iH.length?iH.map(i=>i.player+' ('+i.status+')').join(', '):'none listed'} · ${g.away}: ${iA.length?iA.map(i=>i.player+' ('+i.status+')').join(', '):'none listed'}`:'no feed for this league yet (needs API-Football key)'}</td></tr>`:'';
+  return main+det}).join('');
+ upT.querySelectorAll('button.xb').forEach(b=>b.onclick=()=>{const id=b.dataset.id;OPEN.has(id)?OPEN.delete(id):OPEN.add(id);renderUp()});}
+fShow.querySelectorAll('button').forEach(b=>b.onclick=()=>{SHOW=b.dataset.v;fShow.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));renderUp()});
+fExp.onclick=()=>{ALLOPEN=!ALLOPEN;OPEN.clear();fExp.textContent=ALLOPEN?'details ▴':'details ▾';renderUp()};
+
+
+// ---------------- performance & bet history
+let LED={live:[],bt:[],old:[],fs:[]},PM='bt',PSORT={k:'kickoff_utc',d:-1},PPAGE=0;
+const BAND=x=>x<2?'fav <2.0':x<3?'2.0-3.0':'3.0+';
+const MKT=x=>MK(x.market||'');
+const RES=x=>x.result==null?'open':(/won/.test(x.result)?'won':/lost/.test(x.result)?'lost':x.result.includes('push')?'push':x.result);
+function pstats(a){const st=a.filter(x=>x.result!=null&&x.pnl_units!=null);const n=st.length;if(!n)return {n:0};
+ let c=0,pk=0,dd=0,ls=0,cur=0,k=0;st.forEach(x=>{c+=x.pnl_units;pk=Math.max(pk,c);dd=Math.max(dd,pk-c);if(x.pnl_units<0){cur++;ls=Math.max(ls,cur)}else if(x.pnl_units>0)cur=0;k+=(x.pnl_kelly||0)});
+ const w=st.filter(x=>x.pnl_units>0).length,l=st.filter(x=>x.pnl_units<0).length,pu=n-w-l,cl=st.filter(x=>x.clv!=null);
+ return {n,w,l,pu,win:(w+l)?w/(w+l):null,staked:n,profit:c,roi:c/n,odds:st.reduce((s,x)=>s+x.price,0)/n,clv:cl.length?cl.reduce((s,x)=>s+x.clv,0)/cl.length:null,clvn:cl.length,dd,ls,kelly:k,
+  kstake:st.reduce((s,x)=>s+(x.kelly_units||0),0)}}
+function pkpis(s){const k=(t,v,c='')=>`<div class="kpi"><div class="l">${t}</div><div class="v ${c}">${v}</div></div>`;
+ return k('Settled bets',s.n)+k('Won / lost / push',`${s.w} / ${s.l} / ${s.pu}`)+k('Win %',pct(s.win))+k('Total staked (flat)',`${s.staked}u`)+k('Profit / loss',`${s.profit>0?'+':''}${f2(s.profit)}u`,cls(s.profit))+
+  k('ROI',pct(s.roi),cls(s.roi))+k('Avg odds',f2(s.odds))+k('Avg CLV',s.clv==null?'–':pct(s.clv)+` <small>n=${s.clvn}</small>`,cls(s.clv))+k('Max drawdown',`−${f2(s.dd)}u`)+k('Longest losing streak',s.ls)+
+  k('¼-Kelly P/L',`${s.kelly>0?'+':''}${f2(s.kelly)}u <small>on ${f2(s.kstake)}u staked</small>`,cls(s.kelly))}
+function pfilter(){const sp=pSport.value,lg=pLeague.value,mk=pMarket.value,bd=pBand.value,se=pSeason.value,rs=pRes.value,q=pQ.value.trim().toLowerCase();
+ return LED[PM].filter(x=>(!sp||x.sport===sp)&&(!lg||x.league===lg)&&(!mk||MKT(x)===mk)&&(!bd||BAND(x.price)===bd)&&(!se||SEAS(x.season)===se)&&(!rs||(rs==='push'?/push|half/.test(x.result||''):RES(x)===rs))&&
+  (!q||(x.home+' '+x.away).toLowerCase().includes(q)))}
+function popts(){const a=LED[PM],fill=(el,vals,lab)=>{const v=el.value;el.innerHTML='<option value="">all</option>'+vals.map(x=>`<option value="${x}">${lab?lab(x):x}</option>`).join('');el.value=vals.includes(v)?v:''};
+ fill(pLeague,[...new Set(a.map(x=>x.league))].sort(),x=>LN[x]||x);fill(pMarket,[...new Set(a.map(MKT))].sort());fill(pSeason,[...new Set(a.map(x=>SEAS(x.season)))].sort())}
+function renderPerf(){const a=pfilter(),s=pstats(a),settled=a.filter(x=>x.result!=null&&x.pnl_units!=null).sort((x,y)=>x.kickoff_utc<y.kickoff_utc?-1:1);
+ pNote.innerHTML=PM==='bt'?'<span class="tag bt">BACKTEST · ADOPTED v4</span> Rolling walk-forward: for every season N the rule (edge threshold, odds cap) was tuned on seasons before N only and then applied once to N (2014-15 to 2026-27, 10 big-5 leagues). F11 = best named soft book ≥8% above the market-average no-vig price (odds ≤4); F2 = max price across books ≥10% above it. These are the live rules. Not real money.'
+  :PM==='old'?'<span class="tag bt">BACKTEST · NOT ADOPTED</span> The previous model-based rules (football 1X2/AH, NHL ML/PL; tuned on calibration seasons, tested once on 2021-27 / 2017-22). They did not pass the v4 test, so they are no longer bets (shown as unstaked leans).'
+  :PM==='fs'?'<span class="tag bt">BACKTEST · FLASHSCORE ODDS</span> Out-of-sample bets where the only odds source is Flashscore (NHL after Nov 2022, Swiss NL; ~120 most recent events per season), frozen rules applied unchanged. Kept separate so the main backtest stays comparable. Tiny sample.'
+  :'<span class="tag live">LIVE</span> Real picks recorded by the daily run before kick-off and settled after the result.';
+ const none=!s.n;pEmpty.innerHTML=none?`<div class="warn"><b>${PM==='live'?'No settled live bets yet. The first ones settle after tonight\'s games.':'No bets match the filter.'}</b> ${PM==='live'?`${LED.live.filter(x=>x.result==null).length} open live pick(s) are listed below.`:''}</div>`:'';
+ pK.style.display=none?'none':'';pC.parentElement.parentElement.style.display=none?'none':'';pBy.style.display=none?'none':'';
+ if(!none){pK.innerHTML=pkpis(s);
+  let c=0,kb=100,fb=100;const pts=settled.map((x,i)=>({x:i+1,d:String(x.kickoff_utc).slice(0,10),y:(c+=x.pnl_units),fb:(fb+=x.pnl_units),kb:(kb+=(x.pnl_kelly||0))}));
+  const opt=t=>({animation:false,scales:{x:{type:'linear',title:{display:true,text:'bet number (chronological)'}}},plugins:{tooltip:{callbacks:{title:it=>it[0].raw.d}},title:{display:true,text:t}}});
+  chart('pC',{type:'line',data:{datasets:[{label:'Cumulative profit (units, flat 1u)',data:pts.map(p=>({x:p.x,y:p.y,d:p.d})),borderColor:'#3fb950',pointRadius:0}]},options:opt(`Cumulative profit: ${PM==='live'?'live':PM==='fs'?'Flashscore-odds test':PM==='old'?'old model rules':'adopted v4 backtest'} (${s.n} bets)`)});
+  chart('pB',{type:'line',data:{datasets:[{label:'Bankroll, flat 1u stakes',data:pts.map(p=>({x:p.x,y:p.fb,d:p.d})),borderColor:'#3fb950',pointRadius:0},{label:'Bankroll, ¼-Kelly (cap 2%)',data:pts.map(p=>({x:p.x,y:p.kb,d:p.d})),borderColor:'#58a6ff',pointRadius:0}]},options:opt('Bankroll (start 100u)')});
+  const grp=(f,lab)=>{const g={};settled.forEach(x=>{const k=f(x);(g[k]=g[k]||[]).push(x)});return tblRows([lab,'Bets','W-L-P','Win %','Profit','ROI','Avg odds','CLV'],Object.entries(g).sort().map(([k,v])=>{const t=pstats(v);
+   return [lab==='League'?(LN[k]||k):k,t.n,`${t.w}-${t.l}-${t.pu}`,pct(t.win),`<span class="${cls(t.profit)}">${f2(t.profit)}</span>`,`<span class="${cls(t.roi)}">${pct(t.roi)}</span>`,f2(t.odds),t.clv==null?'–':`<span class="${cls(t.clv)}">${pct(t.clv)}</span>`]}))};
+  pBy.innerHTML=`<h3 style="margin-top:0">Breakdown</h3><div class="two"><div>${grp(x=>x.sport,'Sport')}<br>${grp(MKT,'Market')}<br>${grp(x=>BAND(x.price),'Odds band')}</div><div>${grp(x=>x.league,'League')}<br>${grp(x=>SEAS(x.season),'Season')}</div></div>`;}
+ // table
+ const cols=[['kickoff_utc','Date'],['league','League'],['home','Match'],['market','Market · selection'],['price','Odds taken'],['closing_price','Closing'],['model_prob','Model %'],['ev','EV'],['kelly_units','Stake'],['result','Result'],['pnl_units','P/L'],['bank','Bankroll']];
+ let bank=100;const bk={};settled.forEach(x=>{bank+=x.pnl_units;bk[x.kickoff_utc+x.home+x.market]=bank});
+ const rows=a.map(x=>({...x,bank:bk[x.kickoff_utc+x.home+x.market]??null})).sort((x,y)=>{const u=x[PSORT.k],v=y[PSORT.k];return (u==null)-(v==null)||(u<v?-1:u>v?1:0)*PSORT.d});
+ const PS=50,np=Math.max(1,Math.ceil(rows.length/PS));PPAGE=Math.min(PPAGE,np-1);pCount.textContent=`(${rows.length} bets${PM==='live'?`, ${rows.filter(x=>x.result==null).length} open`:''})`;
+ pT.innerHTML='<tr>'+cols.map(([k,l])=>`<th data-k="${k}" style="cursor:pointer">${l}${PSORT.k===k?(PSORT.d>0?' ▲':' ▼'):''}</th>`).join('')+'</tr>'+
+  (rows.length?rows.slice(PPAGE*PS,PPAGE*PS+PS).map(x=>`<tr><td class=nw>${String(x.kickoff_utc).slice(0,10)}</td><td>${LN[x.league]||x.league}</td><td>${x.home} – ${x.away}</td><td>${MKT(x)}: ${selLabel(x)}</td>
+  <td>${f2(x.price)}${x.book?` <small>${x.book}</small>`:''}</td><td>${f2(x.closing_price)}${x.clv!=null?` <small class="${cls(x.clv)}">${pct(x.clv)}</small>`:''}</td><td>${pct(x.model_prob)}</td><td>${pct(x.ev)}</td>
+  <td>1u <small>/ ${f2(x.kelly_units)}u K</small></td><td>${x.result||'<span class=mut>open</span>'}</td><td class="${cls(x.pnl_units)}">${x.pnl_units==null?'–':f2(x.pnl_units)}</td><td>${x.bank==null?'–':f2(x.bank)}</td></tr>`).join('')
+  :`<tr><td colspan=12 class=mut>${PM==='live'?'No live bets recorded yet.':'No bets match the filter.'}</td></tr>`);
+ pT.querySelectorAll('th').forEach(th=>th.onclick=()=>{const k=th.dataset.k;PSORT=PSORT.k===k?{k,d:-PSORT.d}:{k,d:k==='kickoff_utc'?-1:1};renderPerf()});
+ pPg.innerHTML=np>1?`<button class="xb" style="width:auto;padding:2px 8px" id="pPrev">‹ prev</button> page ${PPAGE+1} / ${np} <button class="xb" style="width:auto;padding:2px 8px" id="pNext">next ›</button>`:'';
+ if(np>1){pPrev.onclick=()=>{PPAGE=Math.max(0,PPAGE-1);renderPerf()};pNext.onclick=()=>{PPAGE=Math.min(np-1,PPAGE+1);renderPerf()}}}
+function renderStrip(){const L=pstats(LED.live),B=pstats(LED.bt),open=LED.live.filter(x=>x.result==null).length;
+ const one=(t,s,tag)=>`<div><span class="tag ${tag}">${t}</span> ${s.n?`<b>${s.n}</b> bets · W-L-P ${s.w}-${s.l}-${s.pu} · P/L <b class="${cls(s.profit)}">${s.profit>0?'+':''}${f2(s.profit)}u</b> · ROI <b class="${cls(s.roi)}">${pct(s.roi)}</b> · CLV ${pct(s.clv)} · max DD −${f2(s.dd)}u`:'<span class=mut>no settled live bets yet. Live picks now come only from the adopted v4 rules (few per month).</span>'}</div>`;
+ homeStrip.innerHTML=`<div style="display:flex;gap:28px;flex-wrap:wrap;align-items:center"><b>Performance</b>${one('LIVE',L,'live')}${open?`<small>${open} open live pick(s)</small>`:''}${one('BACKTEST adopted v4 (out-of-sample)',B,'bt')}<a href="#perf" id="toPerf" style="color:#58a6ff">full history &amp; charts →</a></div>`;
+ toPerf.onclick=e=>{e.preventDefault();document.querySelector('nav button[data-t="perf"]').click()}}
+pMode.querySelectorAll('button').forEach(b=>b.onclick=()=>{PM=b.dataset.v;PPAGE=0;pMode.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));popts();renderPerf()});
+[pSport,pLeague,pMarket,pBand,pSeason,pRes].forEach(el=>el.onchange=()=>{PPAGE=0;renderPerf()});pQ.oninput=()=>{PPAGE=0;renderPerf()};
+document.querySelector('nav button[data-t="perf"]').addEventListener('click',()=>setTimeout(renderPerf,0));
+(async()=>{LED.bt=(await J('data/edge_ledger.json'))||[];LED.old=(await J('data/backtest_ledger.json'))||[];LED.fs=(await J('data/fs_ledger.json'))||[];LED.live=((await J('data/live_bets.json'))||[]).map(x=>({...x,mode:'live'}));popts();renderStrip();renderPerf()})();
+
+// ---------------- live
+function selLabel(x){const m=x.market||'',s=x.selection;if(m==='1X2'||m==='ML')return s==='D'?'Draw':s==='H'?x.home:x.away;
+ if(m.startsWith('OU'))return (s==='O'?'Over ':'Under ')+m.slice(2);const l=parseFloat(m.slice(2))*(s==='H'?1:-1);return `${s==='H'?x.home:x.away} ${l>0?'+':''}${l}`}
+async function renderLive(){const b=(await J('data/live_bets.json'))||[];const st=b.filter(x=>x.result);
+ const s={bets:st.length,profit_units:st.reduce((a,x)=>a+x.pnl_units,0),hit_rate:st.length?st.filter(x=>x.result==='won').length/st.length:null,
+  avg_odds:st.length?st.reduce((a,x)=>a+x.price,0)/st.length:null,kelly_profit:st.reduce((a,x)=>a+(x.pnl_kelly||0),0)};
+ s.roi=st.length?s.profit_units/st.length:null;const cl=st.filter(x=>x.clv!=null);s.avg_clv=cl.length?cl.reduce((a,x)=>a+x.clv,0)/cl.length:null;s.pct_beat_close=cl.length?cl.filter(x=>x.clv>0).length/cl.length:null;
+ kpis(liveK,s);
+ if(!st.length){liveT.innerHTML=`<tr><td class="mut">No settled live picks yet. ${b.length} open pick(s). Picks are recorded automatically by the daily run and settled once results arrive.</td></tr>`;}
+ const c=curve(st);chart('liveC',{type:'line',data:{datasets:[{label:'Profit (units, flat)',data:c.map((p,i)=>({x:i+1,y:p.y,d:p.x})),borderColor:'#3fb950',pointRadius:2},{label:'¼-Kelly',data:c.map((p,i)=>({x:i+1,y:p.k,d:p.x})),borderColor:'#58a6ff',pointRadius:2}]},options:{scales:{x:{type:'linear',title:{display:true,text:'bet number'}}},plugins:{tooltip:{callbacks:{title:it=>it[0].raw.d}},title:{display:true,text:'Live cumulative profit (units)'}}}});
+ const by={};st.forEach(x=>{(by[x.league]=by[x.league]||{n:0,p:0});by[x.league].n++;by[x.league].p+=x.pnl_units});
+ chart('liveL',{type:'bar',data:{labels:Object.keys(by).map(k=>LN[k]),datasets:[{label:'ROI by league',data:Object.values(by).map(v=>v.p/v.n*100),backgroundColor:'#58a6ff'}]},options:{plugins:{title:{display:true,text:'Live ROI % by league'}}}});
+ if(b.length) liveT.innerHTML='<tr><th>Kick-off</th><th>League</th><th>Match</th><th>Pick</th><th>Odds</th><th>EV</th><th>Result</th><th>P/L</th><th>Closing</th><th>CLV</th></tr>'+b.slice().reverse().map(x=>`<tr><td>${fmt.format(new Date(x.kickoff_utc))}</td><td>${LN[x.league]}</td><td>${x.home} – ${x.away}</td><td>${MK(x.market)}: ${selLabel(x)}</td><td>${f2(x.price)} <small>${x.book||''}</small></td><td>${pct(x.ev)}</td><td>${x.result||'<span class=mut>open</span>'}</td><td class="${cls(x.pnl_units)}">${f2(x.pnl_units)}</td><td>${f2(x.closing_price)}</td><td class="${cls(x.clv)}">${pct(x.clv)}</td></tr>`).join('');}
+
+
+
+// ---------------- v4 edge search
+(async()=>{const E=await J('data/edge.json');if(!E)return;const F=E.families,m=E.meta;
+ const ci=c=>c?`${pct(c[0])} to ${pct(c[1])}`:'–';
+ const rows=Object.entries(F).map(([k,v])=>`<tr class="${v.adopt?'pick':''}"><td>${k}</td><td>${v.variants}</td><td>${v.n||0}</td><td><span class="${cls(v.roi)}">${v.n?pct(v.roi):'–'}</span>${v.n?'<br><small class=mut>'+ci(v.roi_ci)+'</small>':''}</td>
+  <td><span class="${cls(v.clv)}">${v.clv!=null?pct(v.clv):'–'}</span>${v.clv_ci?'<br><small class=mut>'+ci(v.clv_ci)+'</small>':''}</td><td>${v.n?f2(v.max_dd)+'u':'–'}</td><td>${v.n?v.seasons_pos+'/'+v.seasons:'–'}</td><td>${v.seasons_clv?v.seasons_pos_clv+'/'+v.seasons_clv:'–'}</td>
+  <td>${v.kelly_final_bankroll!=null?f2(v.kelly_final_bankroll)+' ('+f2(v.kelly_max_dd_pct)+'% DD)':'–'}</td><td>${v.recent_2223plus&&v.recent_2223plus.n?v.recent_2223plus.n+' · '+pct(v.recent_2223plus.roi):'–'}</td>
+  <td>${v.n?(v.p_roi_bonf_families<1?v.p_roi_bonf_families.toFixed(3):'1')+' / '+(v.p_clv_bonf_families!=null?(v.p_clv_bonf_families<0.001?'<0.001':v.p_clv_bonf_families.toFixed(3)):'–'):'–'}</td>
+  <td>${v.adopt?(E.live_rules&&Object.values(E.live_rules).some(r=>r.name===k)?'<b class=pos>adopted (live)</b>':'<b>passes</b> · needs live Pinnacle (not free)'):v.passes_haircut?'rejected: ROI < 0 despite CLV':v.n?'fails':'sat out every season (no edge in tuning)'}</td></tr>`).join('');
+ edgeT.innerHTML=`<h3>v4 edge search: rolling walk-forward, ${m.families} strategy families, ${m.variants_total} variants</h3>
+ <p class=mut>For every test season N each family picks its variant on seasons before N only (objective: mean CLV vs the Pinnacle/exchange closing no-vig price), freezes it and is tested once on N. If nothing was positive in tuning, the family sits that season out. No-vig prices use power de-vig (calibrated on longshots too; proportional de-vig overstates them). p-values are one-sided, Bonferroni-adjusted ×${m.families} families. Adopt rule: (ROI CI > 0 or CLV CI > 0), positive in most seasons, adjusted p < 0.05, and realised ROI ≥ 0.</p>
+ <div style="overflow-x:auto"><table style="font-size:12px"><tr><th>Family</th><th>Variants</th><th>OOS bets</th><th>ROI (95% CI)</th><th>CLV (95% CI)</th><th>Max DD</th><th>Seasons ROI+</th><th>Seasons CLV+</th><th>¼-Kelly 100→</th><th>2022-27 bets · ROI</th><th>p adj. ROI / CLV</th><th>Verdict</th></tr>${rows}</table></div>
+ ${E.adopted_combined?`<p><b>Adopted combination (F11, else F2; one bet per game):</b> ${E.adopted_combined.n} bets, ROI ${pct(E.adopted_combined.roi)} (${ci(E.adopted_combined.roi_ci)}), CLV ${pct(E.adopted_combined.clv)} (${ci(E.adopted_combined.clv_ci)}), flat max DD ${f2(E.adopted_combined.max_dd)}u, ¼-Kelly 100 → ${f2(E.adopted_combined.kelly_final_bankroll)}, ROI-positive seasons ${E.adopted_combined.seasons_pos}/${E.adopted_combined.seasons}.</p>`:''}
+ <p class=mut>Caveats: "Max" is the best price across about 40 books, and the feed does not name the book. The named-book edge came mostly from Interwetten and William Hill, which are no longer in the feed. Longshot-heavy, so ROI is noisy. Soft books limit winning accounts. Pinnacle left the free feed in 2025, so F1/F3/F5/F10 cannot run live without a paid odds API.</p>`})();
+// ---------------- v2 research
+let RS=null,RB=null;
+function tblRows(h,rows){return `<table><tr>${h.map(x=>`<th>${x}</th>`).join('')}</tr>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</table>`}
+const dl=x=>x==null?'–':`<span class="${x<=0?'pos':'neg'}">${x>0?'+':''}${(+x).toFixed(4)}</span>`;
+const ci=a=>a?`${a[0]>0?'+':''}${a[0].toFixed(4)} [${a[1].toFixed(4)}, ${a[2].toFixed(4)}]`:'–';
+function renderV2(){const F=RS.football,N=RS.nhl,L=RS.nl,FC=RS.football_clv,NC=RS.nhl_clv;
+ const fr=F.steps.map(x=>[x.step,x.test_logloss.toFixed(4),dl(x.delta_vs_close_test),dl(x.delta_vs_pre_test),x.cal_logloss.toFixed(4)]);
+ const nr=N.steps.map(x=>[x.step,x.test_logloss.toFixed(4),dl(x.delta_vs_close_test),dl(x.delta_vs_pre_test),x.cal_logloss.toFixed(4)]);
+ v2acc.innerHTML=`<h3 style="margin-top:0">v2 model research: accuracy vs bookmaker odds (out-of-sample, walk-forward)</h3>
+ <div class="warn">Each step adds features to the previous one. Ratings use only games before kick-off; model weights refit each season on earlier seasons only; feature choice by the calibration window. <b>Δ &lt; 0 (green) = model more accurate than the market.</b> Market probabilities are margin-free.</div>
+ <h4>Football: 10 big-5 leagues with pre-match + closing odds, test 2021-22 to 2026-27 (n=${F.n_test}). Closing market ${F.market.closing[0].toFixed(4)} · early market (Bet365/avg, about 1-3 days before) ${F.market.pre[0].toFixed(4)}</h4>
+ ${tblRows(['Step','Test log-loss','Δ vs closing','Δ vs early odds','Calib. log-loss'],fr)}
+ <p><small>Best pure model (${F.best_pure_model}) minus closing: ${ci(F.ci.best_minus_close)} · minus early odds: ${ci(F.ci.best_minus_pre)} · stack (model+early odds) minus early odds: ${ci(F.ci.stack_minus_pre)} (95% bootstrap CI). Swiss Super League (closing average odds only): model − close ${F.swiss?ci([F.swiss.SUI1.model_minus_avg_close,...F.swiss.SUI1.ci]):'–'}, n=${F.swiss?F.swiss.SUI1.n:'–'}. Challenge League: no odds.</small></p>
+ <h4>NHL: test 2017-18 to Nov 2022 with SBR open/close moneylines (n=${N.n_test}). Closing ${N.market.close_test.toFixed(4)} · opening ${N.market.pre_test.toFixed(4)}</h4>
+ ${tblRows(['Step','Test log-loss','Δ vs closing','Δ vs opening','Calib. log-loss'],nr)}
+ <p><small>Best pure model (${N.best_pure_model}) minus closing: ${ci(N.ci.best_minus_close)} (not significantly different from the close) · minus opening: ${ci(N.ci.best_minus_pre)}. 2023-26 log-loss without odds: ${N.steps.map(x=>x.late_logloss_2023_26?x.late_logloss_2023_26.toFixed(4):'').filter(Boolean).join(' → ')}. Model vs opening line predicts line movement: corr ${N.line_movement[0].corr}.</small></p>
+ <h4>Swiss National League (no free odds; test 2019-20 to 2026-27, n=${L.n_test})</h4>${tblRows(['Step','Test log-loss','Calib. log-loss'],L.steps.map(x=>[x.step,x.test_logloss.toFixed(4),x.cal_logloss.toFixed(4)]))}<small>Home-rate baseline ${L.home_rate_baseline_test}. Goal ratings and rest days did not help here, so the NL stays on the Elo model.</small>`;
+ const k=(t,v,c='')=>`<div class="kpi"><div class="l">${t}</div><div class="v ${c}">${v}</div></div>`;
+ const T=NC.test,FT=FC.B365.test;
+ v2K.innerHTML=k('NHL v2: test bets',T.n)+k('NHL ROI',pct(T.roi),cls(T.roi))+k('NHL ROI 95% CI',`${pct(T.roi_ci[0])} … ${pct(T.roi_ci[1])}`)+k('NHL avg CLV',pct(T.clv),cls(T.clv))+k('NHL CLV 95% CI',`${pct(T.clv_ci[0])} … ${pct(T.clv_ci[1])}`)+
+  k('Football v2 (Bet365): bets',FT.n)+k('Football ROI',pct(FT.roi),cls(FT.roi))+k('Football avg CLV',`${pct(FT.clv)} <small>[${pct(FT.clv_ci[0])}, ${pct(FT.clv_ci[1])}]</small>`,cls(FT.clv));
+ const nb=RB.filter(b=>b.sport==='nhl'),fb=RB.filter(b=>b.sport==='football');
+ const cum=(a,key)=>{let c=0;return a.map((b,i)=>({x:i+1,y:(c+=b[key]),d:String(b.kickoff_utc).slice(0,10)}))};
+ const opt=t=>({scales:{x:{type:'linear',title:{display:true,text:'bet number'}}},plugins:{tooltip:{callbacks:{title:it=>it[0].raw.d}},title:{display:true,text:t}}});
+ chart('v2C',{type:'line',data:{datasets:[{label:'Profit (units, flat 1u)',data:cum(nb,'pnl'),borderColor:'#3fb950',pointRadius:0},{label:'Cumulative CLV (units)',data:cum(nb,'clv'),borderColor:'#58a6ff',pointRadius:0}]},options:opt(`NHL v2 CLV rule: TEST 2017-22 (rule: blend ${NC.rule.w}, EV ≥ ${pct(NC.rule.thr)}, odds ${NC.rule.band.join('–')}, bet at opening line)`)});
+ chart('v2F',{type:'line',data:{datasets:[{label:'Profit (units)',data:cum(fb,'pnl'),borderColor:'#f85149',pointRadius:0},{label:'Cumulative CLV (units)',data:cum(fb,'clv'),borderColor:'#58a6ff',pointRadius:0}]},options:opt(`Football v2 CLV rule: TEST 2021-27 (Bet365 early odds; blend ${FC.B365.rule.w}, EV ≥ ${pct(FC.B365.rule.thr)})`)});
+ const seg=F.segments_league.map(x=>[LN[x.segment],x.n,dl(x.model_minus_close)+` <small>[${x.ci[0]}, ${x.ci[1]}]</small>`,dl(x.model_minus_pre),dl(x.stack_minus_pre),dl(x.pre_minus_close)]);
+ const ns=Object.entries(NC.test_by_season).map(([a,b])=>[SEAS(a),b.n,pct(b.roi),pct(b.clv)]);
+ v2seg.innerHTML=`<h3 style="margin-top:0">Segments (test window)</h3><div class="two"><div>${tblRows(['Football league','n','Model − close','Model − early','Stack − early','Early − close'],seg)}</div>
+ <div>${tblRows(['NHL season','Bets','ROI','Avg CLV'],ns)}<p><small>Calibration window 2013-17 for the NHL rule: ${NC.calibration.n} bets, ROI ${pct(NC.calibration.roi)}, CLV ${pct(NC.calibration.clv)}. 45 games whose SBR opening and closing lines are more than 12 points apart (data errors) are excluded. Including them inflated the earlier CLV to +1.5%. ROI is positive in every test season while CLV is negative, so treat the ROI as likely luck.
+ Football with best price across books (Max): CLV ${pct(FC.Max.test.clv)} but ROI ${pct(FC.Max.test.roi)}, so max-price "CLV" on long shots is not real value (stale/outlier quotes).</small></p></div></div>`;}
+
+// ---------------- multi-market research
+let MB=null;
+const BN=b=>b.lo<2?'<2.0':b.lo<3?'2.0–3.0':'3.0+';
+const SL={H:'home',A:'away',D:'draw',O:'over',U:'under'};
+const sm=x=>!x||!x.n?'–':`${x.n} · <span class="${cls(x.roi)}">${pct(x.roi)}</span> <small>[${pct(x.roi_ci[0])}, ${pct(x.roi_ci[1])}]</small>${x.clv!=null?` · CLV <span class="${cls(x.clv)}">${pct(x.clv)}</span>${x.clv_ci?` <small>[${pct(x.clv_ci[0])}, ${pct(x.clv_ci[1])}]</small>`:''}`:''}`;
+function renderGk(){const N=RS.nhl,G=N.goalie,L=RS.nl,F=RS.fs_eval;if(G){const s5=N.steps.find(x=>x.step.startsWith('H5')),s6=N.steps.find(x=>x.step.startsWith('H6')),s4=N.steps.find(x=>x.step.startsWith('H4'));
+ const c=a=>a?`${a[0]>0?'+':''}${a[0].toFixed(5)} [${a[1].toFixed(5)}, ${a[2].toFixed(5)}]`:'–';const v2=RS.nhl_clv_v2,v3=RS.nhl_clv,m=RS.markets.nhl.per_market.ML;
+ gkT.innerHTML=`<h3 style="margin-top:0">NHL starting goalies (v3): effect out-of-sample (test 2017-22, n=${N.n_test})</h3>
+ ${tblRows(['Model','Test log-loss','Δ vs closing','Δ vs opening'],[s4,s5,s6].map(x=>[x.step,x.test_logloss.toFixed(5),dl(x.delta_vs_close_test),dl(x.delta_vs_pre_test)]))}
+ <p><small>H5 − H4 ${c(G.H5_minus_H4_test)} · H6 − H4 ${c(G.H6_minus_H4_test)} (95% CI). Picked by calibration: <b>${N.best_pure_model}</b>. Params (tuned 2013-17): τ=${G.params.tau_days} d, prior ${G.params.prior_xg} xG. Closing line + goalie features vs closing alone: ${c(G.close_plus_goalie_minus_close_only)}, so the close already prices the starter. Opening + goalie vs opening alone: ${c(G.open_plus_goalie_minus_open_only)}. Correlation of starter adjustment with the open→close line move: ${G.corr_gadj_vs_line_move}. Games with a non-usual starter (n=${G.non_usual_starter_games_test}): H4 ${G.H4_logloss_non_usual} · H5 ${G.H5_logloss_non_usual} · close ${G.close_logloss_non_usual} · open ${G.open_logloss_non_usual}.</small></p>
+ <p><small><b>Frozen CLV rule at opening prices</b> (v2 rule format, odds 2.0–8.0): v2 ${v2?`${v2.test.n} bets, CLV ${pct(v2.test.clv)} [${pct(v2.test.clv_ci[0])}, ${pct(v2.test.clv_ci[1])}], ROI ${pct(v2.test.roi)}`:'–'} → v3 ${v3.test.n} bets, CLV ${pct(v3.test.clv)} [${pct(v3.test.clv_ci[0])}, ${pct(v3.test.clv_ci[1])}], ROI ${pct(v3.test.roi)} [${pct(v3.test.roi_ci[0])}, ${pct(v3.test.roi_ci[1])}].
+ Banded moneyline rule (live): ${sm(m.test_alone)}. <b>Caveat:</b> uses the actual starter at the opening price; at open time the starter is often unknown, so this is an upper bound.
+ Swiss NL goalie (SIHF save%): ${L.steps.filter(x=>x.delta_vs_N2_test).map(x=>`${x.step}: ${c(x.delta_vs_N2_test)}`).join(' · ')}. No gain.</small></p>`}
+ if(F){const row=(k,o)=>o?[k,o.accuracy.n,`${o.accuracy.model} / ${o.accuracy.opening} / ${o.accuracy.closing}`,c2(o.accuracy.model_minus_close),sm(o.test),Object.entries(o.by_band).map(([b,x])=>`${b}: ${x.n} · ${pct(x.roi)}${x.clv!=null?` · CLV ${pct(x.clv)}`:''}`).join('<br>'),Object.entries(o.by_sel).map(([b,x])=>`${SL[b]}: ${x.n} · ${pct(x.roi)}`).join('<br>')]:[k,'–','','','','',''];
+  const c2=a=>a?`${a[0]>0?'+':''}${a[0].toFixed(4)} <small>[${a[1].toFixed(4)}, ${a[2].toFixed(4)}]</small>`:'–';
+  fsT.innerHTML=`<h3 style="margin-top:0">New leagues with Flashscore odds (opening + closing, bet365 / bet-at-home): frozen rules, never tuned on these games</h3>
+  <div class="warn">Sample = events listed on Flashscore season pages (~120 most recent per season, so mostly late season and playoffs), 2022-23 to now. NHL + Swiss NL use the NHL moneyline rule, Challenge League the football 1X2 rule. Live Swiss NL picks use the same frozen NHL moneyline rule (2.0-3.0 odds only, EV ≥ 2%, ¼ market blend). Bets at the opening price, CLV vs the margin-free closing price.</div>
+  ${tblRows(['League','Games','Log-loss model / open / close','Model − close','Rule bets (n · ROI · CLV)','By band','By selection'],[row('NHL 2022-26',F.NHL),row('Swiss NL',F.NL),row('Challenge League',F.SUI2)])}
+  ${F.SUI2&&F.SUI2.diag_pure_model_ev5_all_bands?`<small>Challenge League diagnostic (pure model, EV ≥ 5%, all bands): ${sm(F.SUI2.diag_pure_model_ev5_all_bands)}</small>`:''}`}}
+function renderMk(){const R=RS.markets;if(!R||!MB)return;const row=(sp,k,v)=>{const t=v.test_alone,c=v.calibration;
+  return [sp,MK(k),`blend ${v.rule.w}; ${v.rule.bands.map(b=>`${BN(b)}: ${b.thr==null?'<span class=mut>off</span>':'EV ≥ '+pct(b.thr)}`).join(', ')}`,v.enabled?'<b class=pos>yes</b>':'<span class=mut>no</span>',
+  c&&c.n?`${c.n} · ${pct(c.roi)} · ${c.clv!=null?pct(c.clv):'–'}`:'–',t.n||0,t.n?`<span class="${cls(t.roi)}">${pct(t.roi)}</span> <small>[${pct(t.roi_ci[0])}, ${pct(t.roi_ci[1])}]</small>`:'–',
+  t.n&&t.clv!=null?`<span class="${cls(t.clv)}">${pct(t.clv)}</span> <small>${t.clv_ci?`[${pct(t.clv_ci[0])}, ${pct(t.clv_ci[1])}]`:''} n=${t.clv_n}</small>`:'<small>no closing odds</small>',
+  Object.entries(v.test_by_sel).map(([s,x])=>`${SL[s]} ${x.n}: ${pct(x.roi)}`).join('<br>')]};
+ const rows=[];for(const sp of ['football','nhl'])for(const[k,v]of Object.entries(R[sp].per_market))rows.push(row(sp==='nhl'?'NHL':'Football',k,v));
+ const cb=(sp,o)=>{const a=o.combined_test,b=o.combined_enabled_test;return `<b>${sp}</b>: one bet per game across all markets: ${a.n} bets, ROI ${pct(a.roi)} [${a.roi_ci?pct(a.roi_ci[0]):'–'}, ${a.roi_ci?pct(a.roi_ci[1]):'–'}], CLV ${a.clv!=null?pct(a.clv):'–'} (n=${a.clv_n}); ${Object.entries(o.combined_test_by_market).map(([k,x])=>`${MK(k)} ${x.n} @ ${pct(x.roi)}`).join(', ')}. Enabled markets only (${o.enabled_markets.map(MK).join(', ')||'none'}): ${b.n||0} bets, ROI ${pct(b.roi)}.`};
+ mkT.innerHTML=`<h3 style="margin-top:0">Markets: 1X2 (incl. draw), Asian handicap, Over/Under 2.5, puck line (walk-forward; rule tuned on calibration seasons, then frozen)</h3>
+ <div class="warn">Each market is tuned and tested on its own. "Enabled" means the frozen rule had positive CLV in the calibration seasons (ROI where there are no closing odds). Live picks come only from enabled markets; the others show model prices and "value at ≥". Football AH/OU: priced from the walk-forward Poisson score model (Dixon-Coles). Quarter lines settle as half win/loss, whole lines can push. Bets use Bet365 early prices (average before 2019-20). AH CLV only where the closing line equals the bet line. NHL puck line: 4-class final-margin model. SBR has one puck-line price per game (closing), so there is no CLV and an early-line edge cannot be tested.</div>
+ ${tblRows(['Sport','Market','Frozen rule','Enabled','Calib. n · ROI · CLV','Test bets','Test ROI [95% CI]','Test CLV','By selection (n: ROI)'],rows)}
+ <h4>By odds band and selection: test seasons (n · ROI [95% CI] · CLV [95% CI])</h4>
+ <div class="warn">The odds band is no longer restricted to underdogs. Favourites (&lt;2.0), mid (2.0–3.0) and longshots (3.0+) each get their own threshold, tuned on the calibration seasons. A band is <b>off</b> when its best rule had no positive CLV there. "All bands" applies each band's tuned threshold even where the band is off (a diagnostic, not the live rule). "Single threshold" is one threshold over the full odds range.</div>
+ ${tblRows(['Sport · market','Band / selection','Live rule (enabled bands)','All bands (diagnostic)','Single threshold, full range'],
+   ['football','nhl'].flatMap(sp=>Object.entries(R[sp].per_market).flatMap(([k,v])=>{const lab=`${sp==='nhl'?'NHL':'Football'} ${MK(k)}`,D=v.test_all_bands_diag,S1=v.single_threshold_full_range;
+    const bands=['fav <2.0','2.0-3.0','3.0+'].map(b=>[lab,`odds ${b}`,sm(v.test_by_band[b]),sm(D.by_band[b]),sm((S1.test_by_band||{})[b])]);
+    const sels=Object.keys(D.by_sel||{}).map(x=>[lab,SL[x],sm(v.test_by_sel[x]),sm(D.by_sel[x]),'']);
+    return [[`<b>${lab}</b>`,'<b>all</b>',sm(v.test_alone),sm(D.all),sm(S1.test)+(S1.rule?` <small>(blend ${S1.rule.w}, EV ≥ ${pct(S1.rule.thr)})</small>`:'')],...bands,...sels]})))}
+ <p><small>${cb('Football (test 2021-27)',R.football)}<br>${cb('NHL (test 2017-22)',R.nhl)}<br>NHL puck-line accuracy (test, n=${R.nhl.puckline_logloss_test.n}): model log-loss ${R.nhl.puckline_logloss_test.model} vs margin-free puck-line price ${R.nhl.puckline_logloss_test.market}.</small></p>`;
+ const keys=[...new Set(MB.map(b=>b.sport+'|'+b.market))],col=['#3fb950','#58a6ff','#d29922','#f85149','#a371f7'];
+ const cum=a=>{let c=0;return a.map((b,i)=>({x:i+1,y:(c+=b.pnl),d:String(b.kickoff_utc).slice(0,10)}))};
+ const opt=t=>({scales:{x:{type:'linear',title:{display:true,text:'bet number'}}},plugins:{tooltip:{callbacks:{title:it=>it[0].raw.d}},title:{display:true,text:t}}});
+ chart('mkC',{type:'line',data:{datasets:keys.map((k,i)=>({label:`${k.split('|')[0]==='nhl'?'NHL':'Football'} ${MK(k.split('|')[1])}`,data:cum(MB.filter(b=>b.sport+'|'+b.market===k)),borderColor:col[i%5],pointRadius:0}))},options:opt('Test profit by market (units, one bet per game, all markets)')});
+ chart('mkN',{type:'bar',data:{labels:keys.map(k=>`${k.split('|')[0]==='nhl'?'NHL':'Football'} ${MK(k.split('|')[1])}`),datasets:[{label:'ROI % (test)',data:keys.map(k=>{const a=MB.filter(b=>b.sport+'|'+b.market===k);return a.reduce((s,b)=>s+b.pnl,0)/a.length*100}),backgroundColor:'#58a6ff'}]},options:{plugins:{title:{display:true,text:'Test ROI % by market'}}}});}
+
+// ---------------- backtest
+let BT=null,BB=null;
+function renderBt(){const k=btSport.value,S=BT.sports[k],sport=k==='nhl'?'hockey':'football';
+ btInfo.innerHTML=`Calibration: ${S.calibration_window} · Test: ${S.test_window} · Bet price: ${S.bet_price} · CLV vs: ${S.clv_reference} · Rule: blend ${S.policy.blend}, EV ≥ ${pct(S.policy.min_ev)}, odds ${S.policy.min_odds}–8`;
+ kpis(btK,S.test);
+ const bets=BB.filter(b=>b.sport===sport).sort((a,b)=>a.kickoff_utc<b.kickoff_utc?-1:1);
+ const cal=bets.filter(b=>b.phase==='calibration'),te=bets.filter(b=>b.phase==='test');const c1=curve(cal),off=c1.length?c1[c1.length-1].y:0;const c2=curve(te);
+ const n1=c1.length;chart('btC',{type:'line',data:{datasets:[{label:'Calibration (in-sample)',data:c1.map((p,i)=>({x:i,y:p.y,d:p.x})),borderColor:'#8b98a5',pointRadius:0},
+  {label:'Test (out-of-sample), flat 1u',data:c2.map((p,i)=>({x:n1+i,y:p.y+off,d:p.x})),borderColor:'#f85149',pointRadius:0},{label:'Test, ¼-Kelly',data:c2.map((p,i)=>({x:n1+i,y:p.k+off,d:p.x})),borderColor:'#58a6ff',pointRadius:0,borderDash:[4,3]}]},
+  options:{scales:{x:{type:'linear',title:{display:true,text:'bet number (chronological)'}},y:{title:{display:true,text:'units'}}},plugins:{tooltip:{callbacks:{title:it=>it[0].raw.d}},title:{display:true,text:'Cumulative profit in units (BACKTEST): grey = calibration, red/blue = out-of-sample test'}}}});
+ const L=S.by_league||{};const lk=Object.keys(L).filter(x=>L[x].bets);
+ chart('btL',{type:'bar',data:{labels:lk.map(x=>LN[x]),datasets:[{label:'Test ROI %',data:lk.map(x=>L[x].roi*100),backgroundColor:lk.map(x=>L[x].roi>0?'#3fb950':'#f85149')}]},options:{plugins:{title:{display:true,text:k==='nhl'?'(single league)':'Test ROI % by league (small samples!)'}}}});
+ const Sx=S.by_season||{};const sk=Object.keys(Sx);
+ chart('btS',{type:'bar',data:{labels:sk.map(SEAS),datasets:[{label:'Profit (units)',data:sk.map(x=>Sx[x].profit_units),backgroundColor:sk.map(x=>Sx[x].profit_units>0?'#3fb950':'#f85149')}]},options:{plugins:{title:{display:true,text:'Test profit by season'}}}});
+ const q=S.model_quality;btQ.innerHTML=`n=${q.n} · model <b>${q.logloss_model}</b> vs closing market <b>${q.logloss_closing_market}</b>${q.logloss_betprice_market?` · pre-match market ${q.logloss_betprice_market}`:''}. <small>The market is ${q.logloss_model>q.logloss_closing_market?'<b>more accurate</b> than the model, so most apparent "value" is model error. This is the gap to close (injuries, lineups, xG) before real money.':'less accurate than the model.'}</small>
+  <br><small>Default (untuned) rule on test: ${S.test_default_policy?`${S.test_default_policy.bets} bets, ROI ${pct(S.test_default_policy.roi)}`:'–'} · Best-price-across-books on test: ${S.test_best_price?`${S.test_best_price.bets} bets, ROI ${pct(S.test_best_price.roi)}`:'–'} · Calibration: ${S.calibration.bets} bets, ROI ${pct(S.calibration.roi)}</small>`;
+ const rows=[...Object.entries(L).map(([a,b])=>['League',LN[a],b]),...Object.entries(Sx).map(([a,b])=>['Season',SEAS(a),b])];
+ btT.innerHTML='<tr><th></th><th></th><th>Bets</th><th>Wins</th><th>Avg odds</th><th>Profit u</th><th>ROI</th><th>±SE</th><th>Kelly profit</th><th>Avg CLV</th></tr>'+rows.map(([t,n,b])=>`<tr><td class=mut>${t}</td><td>${n}</td><td>${b.bets}</td><td>${b.wins??'–'}</td><td>${f2(b.avg_odds)}</td><td class="${cls(b.profit_units)}">${f2(b.profit_units)}</td><td class="${cls(b.roi)}">${pct(b.roi)}</td><td>${pct(b.roi_se)}</td><td>${f2(b.kelly_profit)}</td><td>${pct(b.avg_clv)}</td></tr>`).join('');
+ const nl=BT.sports.swiss_nl;btNL.innerHTML=`${nl.note}<br>n=${nl.n} games · model log-loss ${nl.logloss_model_ml} vs home-win-rate baseline ${nl.logloss_home_rate_only} · regulation-tie (OT/SO) rate ${pct(nl.reg_tie_rate)}`;}
+
+const ABOUT=`<h3>Live rule (v4, adopted Oct 2026)</h3><p>Only strategies that passed a rolling walk-forward test become bets. Each season was tuned on the seasons before it only and tested once. 14 families and 118 variants were tried, with a Bonferroni haircut. The two adopted rules are price-based, not model-based. Both run on the football-data.co.uk pre-match odds file (10 big-5 leagues, updated Tue/Fri). <b>F11:</b> bet when a named soft book (Bet365, bwin, BetVictor, Betfred, Paddy Power, Sky Bet…) offers ≥8% more than the market-average no-vig price (power de-vig), odds ≤4. <b>F2:</b> otherwise, when the max price across books is ≥10% above it. The feed does not name the book, so you have to line-shop. One bet per game, flat 1u, or ¼-Kelly capped at 2%. The old model rules (Elo/xG/goalies, banded EV thresholds) failed the test. Their selections still appear as unstaked "model lean" for information. Swiss leagues and hockey have no adopted rule.</p>
+<h3>How the (old) model picks were made</h3><ol>
+<li><b>Strength index</b>: Elo ratings per rating pool (each country's 1st+2nd tier share one pool so promoted/relegated teams keep their rating), home advantage, goal-margin multiplier, 20% (football) / 30% (hockey) regression to league mean each season. Newcomers start near the bottom of their league.</li>
+<li><b>Streaks vs opponent strength</b>: form = mean(actual result − Elo-expected result) over the last 6 games, so beating strong teams counts more than beating weak ones. <b>Head-to-head</b>: same residual over up to 6 meetings in the last 4 years.</li>
+<li><b>Football model</b>: Poisson goal model, log λ = f(Elo diff, form diff, H2H), coefficients refit per league on past seasons only, Dixon-Coles low-score correction → 1X2 probabilities.</li>
+<li><b>Hockey model</b>: Elo with OT/SO wins credited 0.6 → calibrated P(win incl. OT/SO) for moneyline; 60-min 3-way probabilities from a fitted regulation-tie model.</li>
+<li><b>Markets</b>: every game is priced in several markets. Football: 1X2 including the draw, Asian handicap on whatever lines are offered (quarter lines settle as half win/loss, whole lines can push) and Over/Under (2.5 and any ESPN line). AH/OU come from the full score matrix of the Poisson model. NHL: moneyline, plus the ±1.5 puck line from a final-margin model (home/away by 1 or by 2+). Swiss NL: moneyline only.</li>
+<li><b>Value</b>: EV = blend·model EV + (1−blend)·market EV (de-vigged). Each market has its own frozen rule (blend, EV threshold, odds band), tuned on the calibration seasons only. <b>At most one bet per game</b>: the highest EV that passes its market's rule. Markets whose rule showed no edge in calibration (currently football AH and O/U, NHL puck line) are priced only; no picks. "Value at ≥" is the lowest odds at which the pure model would clear that market's threshold. Stakes: flat 1u (shown) and ¼-Kelly capped at 2% bankroll (for AH, Kelly uses the push-adjusted EV).</li>
+<li><b>Injuries</b>: NHL injury lists (ESPN) are shown per game but are <i>not yet</i> priced into the model. Football injuries need an API-Football key.</li></ol>
+<h3>v2 model (research, Oct 2026)</h3><ul>
+<li><b>Football</b>: Elo + time-decayed attack/defence ratings (online Poisson, a team's rating moves after every match, so older games fade out) on goals, on shots on target (football-data.co.uk) and on Understat xG (big-5 top tiers), combined in a multinomial logistic model refit each season. Promoted/relegated teams get a rating shift; rest days, form, H2H and draw shape were tested and add ~nothing. Result: the gap to the closing line shrinks from 0.020 to 0.015 log-loss, but the model is still clearly <b>less accurate than the market</b>. Football picks remain experimental (v1 rule).</li>
+<li><b>NHL</b>: Elo + attack/defence ratings on goals, MoneyPuck score/venue-adjusted xG and shots, plus back-to-back/rest. Out-of-sample this is <b>as accurate as the SBR closing line</b> (difference not significant) and more accurate than the opening line. Live NHL picks use this model with the frozen CLV rule: 50/50 blend with the market, EV ≥ 4%, odds 2.0–8.0, bet early. After excluding 45 games with broken SBR opening lines, the rule's test CLV is −0.9% (CI below 0) and its ROI is +10% (CI includes 0), so <b>no proven edge</b>.</li>
+<li><b>Swiss NL</b>: goal ratings and rest did not improve on Elo; no free odds to test against.</li>
+<li><b>Historic odds per market</b>: football-data.co.uk has AH lines + Bet365/Pinnacle/avg AH and O/U 2.5 prices (pre-match and closing from 2019-20; only average pre-match before that). SBR has one puck-line price per NHL game (closing; 2012-22). There are no historic puck-line or O/U prices for the Swiss NL, and no AH/OU prices for the Swiss leagues.</li>
+<li><b>NHL goalies (v3)</b>: actual starters from NHL boxscores (api-web.nhle.com, 2010-11 to now). Rating = goals saved above expected (MoneyPuck xG of the shots each goalie faced minus goals allowed, empty-net excluded, centred on the previous season's league level), time-decayed (half-life about 1.4 years, τ=730 days) and shrunk toward average with a 30-xG prior. Decay and prior were tuned on 2013-17 only. Features: starter rating, starter minus the team's usual starter (start-share weighted), and a new-goalie flag. Effect out-of-sample is tiny (log-loss −0.00015 vs v2, CI includes 0). The bookmakers clearly react to starters (open→close line move correlates 0.19 with the starter adjustment), but the closing line already contains it. The backtest uses the actual starter at the opening price, which is optimistic, because starters are usually unknown when lines open. Live: DailyFaceoff starting-goalies page (confirmed / likely / unconfirmed), names mapped to NHL ids via the NHL roster API. If there's no report, the team's usual starter is assumed. Picks flag unconfirmed starters. The 17:00 Zurich run usually catches morning confirmations for evening (ET) games, but late scratches after that are not seen.</li>
+<li><b>Swiss NL goalies</b>: SIHF game sheets (shots, saves, TOI, "1st goalkeeper" tag) give a save%-based rating (no shot quality). It does not improve the model (−0.0001, CI ±0.001), so it is not used live. No pre-game starter source exists for the NL.</li>
+<li><b>Odds bands</b>: no underdog-only restriction any more. Each market has a separate EV threshold for favourites (&lt;2.0), mid (2.0–3.0) and longshots (3.0+), tuned on calibration seasons. A band is used only if its tuned rule had positive calibration CLV (ROI where there's no closing price).</li>
+<li><b>Flashscore odds</b> (keyless, public odds endpoint behind flashscore.com; geo CH → bet365, bet-at-home; opening + current/closing): live odds for the Challenge League and Swiss NL (no other free feed), plus closing odds for CLV. Historic: only the ~120 most recent events per season are listed on the public season pages, so backtests there use partial seasons. OddsPortal pages show odds too, but deeper history needs requests protected by an anti-bot proof, so it was not used.</li>
+<li><b>Not yet modelled</b>: confirmed goalie starters (biggest known NHL factor), lineups, injuries/player importance, travel, xG for 2nd tiers and Swiss leagues.</li></ul>
+<h3>Data sources</h3><ul><li>football-data.co.uk: results + Bet365/Pinnacle/avg/max pre-match & closing odds (big-5 two tiers, Swiss SL closing only), fixture odds files</li>
+<li>FotMob (unofficial JSON): Swiss Super League & Challenge League results/fixtures</li><li>SBR odds archive: NHL results + open/close moneylines 2012-13 to Nov 2022</li>
+<li>NHL API (api-web.nhle.com): NHL results/fixtures since Nov 2022</li><li>Understat (unofficial JSON): xG for Premier League, La Liga, Serie A, Bundesliga, Ligue 1 since 2015-16</li><li>MoneyPuck (public CSV): NHL team game-by-game xG/shots since 2008</li><li>SIHF data API: Swiss National League results/fixtures incl. OT/SO</li>
+<li>ESPN site API: DraftKings 1X2 / moneylines for big-5 leagues & NHL, NHL injuries</li><li>NHL boxscores (api-web.nhle.com): starting goalies, shots, goals against, 2010-now</li><li>DailyFaceoff: projected/confirmed NHL starters (live)</li><li>SIHF game sheets: Swiss NL goalie stats</li><li>Flashscore: opening/closing odds (bet365, bet-at-home) for Challenge League, Swiss NL, NHL; live odds for Challenge League + Swiss NL</li>
+<li>The Odds API / API-Football: plug-in, activated by API keys</li></ul>
+<p class=mut>Backtest = simulation on historic odds. Live = picks recorded before kick-off by the daily job. Nothing on this page is betting advice.</p>`;
+
+(async()=>{UP=await J('data/upcoming.json');BT=await J('data/backtest_summary.json');BB=(await J('data/backtest_bets.json'))||[];const LR=await J('data/last_run.json');
+ stamp.textContent=LR?'Updated '+fmt.format(new Date(LR.finished))+' (Zurich)':'';aboutC.innerHTML=ABOUT;
+ if(UP){[...new Set(UP.games.map(g=>g.league))].forEach(l=>fLeague.insertAdjacentHTML('beforeend',`<option value="${l}">${LN[l]||l}</option>`));[fSport,fLeague].forEach(e=>e.onchange=renderUp);renderUp();}
+ else upT.innerHTML='<tr><td class=mut>No upcoming data yet. Run the daily job.</td></tr>';
+ if(BT){btSport.onchange=renderBt;renderBt();} RS=await J('data/research.json');RB=(await J('data/research_bets.json'))||[]; MB=await J('data/markets_bets.json'); if(RS){renderV2();renderGk();renderMk();} renderLive();})();
+</script>
+</body></html>
