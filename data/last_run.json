@@ -1,5 +1,5 @@
 {
- "started": "2026-10-31T16:10:20+00:00",
+ "started": "2026-11-01T08:07:43+00:00",
  "ingest": {
   "football-data": 43531,
   "fotmob-swiss": 4309,
@@ -8,20 +8,20 @@
    281
   ],
   "sbr-nhl": 12705,
-  "nhl-api": 5541,
+  "nhl-api": 5547,
   "sihf": 4852,
   "moneypuck": 127664071,
-  "nhl-boxscores-goalies": 0
+  "nhl-boxscores-goalies": 10
  },
- "fd_fixture_odds": 3915,
+ "fd_fixture_odds": 3888,
  "espn_unmatched_teams": [],
- "espn_soccer_odds": 476,
- "espn_nhl_odds": 60,
+ "espn_soccer_odds": 665,
+ "espn_nhl_odds": 20,
  "flashscore_live": {
-  "SUI2": "8 upcoming, 6 with odds, 0 unmatched",
-  "NL": "12 upcoming, 12 with odds, 0 unmatched"
+  "SUI2": "10 upcoming, 0 with odds, 0 unmatched",
+  "NL": "0 upcoming, 0 with odds, 0 unmatched"
  },
- "flashscore_live_rows": 284,
+ "flashscore_live_rows": 0,
  "flashscore_closing": {
   "SUI2": {
    "current": {
@@ -32,30 +32,30 @@
   },
   "NL": {
    "current": {
-    "events": 125,
-    "with_odds": 125,
+    "events": 122,
+    "with_odds": 111,
     "unmatched": 0
    }
   },
   "NHL": {
    "current": {
-    "events": 129,
-    "with_odds": 129,
+    "events": 132,
+    "with_odds": 113,
     "unmatched": 0
    }
   }
  },
  "the_odds_api": "0 rows; ODDS_API_KEY not set",
- "injuries_nhl_espn": 132,
+ "injuries_nhl_espn": 133,
  "injuries_football_api": "0 rows; API_SPORTS_KEY not set",
- "starters_games": 48,
+ "starters_games": 50,
  "starters_unmatched": [],
- "starters_confirmed": 7,
- "leans_model": 8,
- "predictions": 179,
+ "starters_confirmed": 3,
+ "leans_model": 4,
+ "predictions": 175,
  "picks": 0,
- "recorded": 179,
+ "recorded": 175,
  "settled": 0,
  "warnings": [],
- "finished": "2026-10-31T16:13:16+00:00"
+ "finished": "2026-11-01T08:13:34+00:00"
 }
