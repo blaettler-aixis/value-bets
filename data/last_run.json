@@ -1,7 +1,7 @@
 {
- "started": "2026-11-02T08:05:34+00:00",
+ "started": "2026-11-02T16:03:27+00:00",
  "ingest": {
-  "football-data": 43531,
+  "football-data": 43619,
   "fotmob-swiss": 4309,
   "swz-odds": [
    19821,
@@ -10,12 +10,12 @@
   "sbr-nhl": 12705,
   "nhl-api": 5558,
   "sihf": 4852,
-  "moneypuck": 127718797,
-  "nhl-boxscores-goalies": 5
+  "moneypuck": 127746121,
+  "nhl-boxscores-goalies": 0
  },
  "fd_fixture_odds": 3861,
  "espn_unmatched_teams": [],
- "espn_soccer_odds": 676,
+ "espn_soccer_odds": 662,
  "espn_nhl_odds": 16,
  "flashscore_live": {
   "SUI2": "10 upcoming, 10 with odds, 0 unmatched",
@@ -50,12 +50,12 @@
  "injuries_football_api": "0 rows; API_SPORTS_KEY not set",
  "starters_games": 51,
  "starters_unmatched": [],
- "starters_confirmed": 0,
+ "starters_confirmed": 1,
  "leans_model": 1,
- "predictions": 183,
+ "predictions": 181,
  "picks": 0,
- "recorded": 183,
+ "recorded": 181,
  "settled": 0,
  "warnings": [],
- "finished": "2026-11-02T08:08:12+00:00"
+ "finished": "2026-11-02T16:06:14+00:00"
 }
