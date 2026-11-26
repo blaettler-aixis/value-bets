@@ -1,7 +1,7 @@
 {
- "started": "2026-11-26T08:20:45+00:00",
+ "started": "2026-11-26T16:20:05+00:00",
  "ingest": {
-  "football-data": 43848,
+  "football-data": 43870,
   "fotmob-swiss": 4309,
   "swz-odds": [
    19983,
@@ -10,13 +10,13 @@
   "sbr-nhl": 12705,
   "nhl-api": 5730,
   "sihf": "ERROR: HTTPError: 403 Client Error: Forbidden for url: https://data.sihf.ch/statistic/api/cms/table?alias=results&searchQuery=1%2F%2F1&language=en&filterBy=Season%2CDate&filterQuery=2027%2F01.07.2026-30.06.2027",
-  "moneypuck": 128587571,
-  "nhl-boxscores-goalies": 14
+  "moneypuck": 128663611,
+  "nhl-boxscores-goalies": 0
  },
  "fd_fixture_odds": 858,
  "espn_unmatched_teams": [],
- "espn_soccer_odds": 679,
- "espn_nhl_odds": 0,
+ "espn_soccer_odds": 700,
+ "espn_nhl_odds": 60,
  "flashscore_live": {
   "SUI2": "10 upcoming, 10 with odds, 0 unmatched",
   "NL": "30 upcoming, 15 with odds, 0 unmatched"
@@ -51,7 +51,7 @@
  "starters_games": 48,
  "starters_unmatched": [],
  "starters_confirmed": 2,
- "leans_model": 0,
+ "leans_model": 2,
  "predictions": 176,
  "picks": 0,
  "recorded": 176,
@@ -59,5 +59,5 @@
  "warnings": [
   "ingest sihf: ERROR: HTTPError: 403 Client Error: Forbidden for url: https://data.sihf.ch/statistic/api/cms/table?alias=results&searchQuery=1%2F%2F1&language=en&filterBy=Season%2CDate&filterQuery=2027%2F01.07.2026-30.06.2027"
  ],
- "finished": "2026-11-26T08:25:20+00:00"
+ "finished": "2026-11-26T16:24:18+00:00"
 }
