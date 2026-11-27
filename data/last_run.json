@@ -1,5 +1,5 @@
 {
- "started": "2026-11-26T16:20:05+00:00",
+ "started": "2026-11-27T08:17:32+00:00",
  "ingest": {
   "football-data": 43870,
   "fotmob-swiss": 4309,
@@ -8,20 +8,20 @@
    281
   ],
   "sbr-nhl": 12705,
-  "nhl-api": 5730,
+  "nhl-api": 5734,
   "sihf": "ERROR: HTTPError: 403 Client Error: Forbidden for url: https://data.sihf.ch/statistic/api/cms/table?alias=results&searchQuery=1%2F%2F1&language=en&filterBy=Season%2CDate&filterQuery=2027%2F01.07.2026-30.06.2027",
   "moneypuck": 128663611,
   "nhl-boxscores-goalies": 0
  },
  "fd_fixture_odds": 858,
  "espn_unmatched_teams": [],
- "espn_soccer_odds": 700,
+ "espn_soccer_odds": 728,
  "espn_nhl_odds": 60,
  "flashscore_live": {
   "SUI2": "10 upcoming, 10 with odds, 0 unmatched",
-  "NL": "30 upcoming, 15 with odds, 0 unmatched"
+  "NL": "29 upcoming, 14 with odds, 0 unmatched"
  },
- "flashscore_live_rows": 360,
+ "flashscore_live_rows": 340,
  "flashscore_closing": {
   "SUI2": {
    "current": {
@@ -32,8 +32,8 @@
   },
   "NL": {
    "current": {
-    "events": 122,
-    "with_odds": 122,
+    "events": 121,
+    "with_odds": 121,
     "unmatched": 0
    }
   },
@@ -46,18 +46,18 @@
   }
  },
  "the_odds_api": "0 rows; ODDS_API_KEY not set",
- "injuries_nhl_espn": 119,
+ "injuries_nhl_espn": 118,
  "injuries_football_api": "0 rows; API_SPORTS_KEY not set",
- "starters_games": 48,
+ "starters_games": 60,
  "starters_unmatched": [],
- "starters_confirmed": 2,
- "leans_model": 2,
- "predictions": 176,
+ "starters_confirmed": 3,
+ "leans_model": 1,
+ "predictions": 188,
  "picks": 0,
- "recorded": 176,
+ "recorded": 188,
  "settled": 0,
  "warnings": [
   "ingest sihf: ERROR: HTTPError: 403 Client Error: Forbidden for url: https://data.sihf.ch/statistic/api/cms/table?alias=results&searchQuery=1%2F%2F1&language=en&filterBy=Season%2CDate&filterQuery=2027%2F01.07.2026-30.06.2027"
  ],
- "finished": "2026-11-26T16:24:18+00:00"
+ "finished": "2026-11-27T08:21:45+00:00"
 }
